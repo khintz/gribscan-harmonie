@@ -120,7 +120,20 @@ def create_loader(fn_source_files, fp_grib_indecies_root=None, **kwargs):
         if len(datasets) == 1:
             return datasets[0]
 
-        ds_all = xr.concat(datasets, dim="time")
+        # check if the datasets overlap in time at all, if they do we assume
+        # that we are a looking at multiple forecasts and so we concat along a
+        # new dimension called the `analysis_time` and we rename the original
+        # time dimension `valid_time`
+        if len(set(datasets[0].time.values).intersection(datasets[1].time.values)) > 1:
+            for i in range(len(datasets)):
+                ds = datasets[i]
+                t_analysis = ds.isel(time=0).time.data
+                ds = ds.rename(dict(time="valid_time"))
+                ds.coords["analysis_time"] = t_analysis
+                datasets[i] = ds
+            ds_all = xr.concat(datasets, dim="analysis_time")
+        else:
+            ds_all = xr.concat(datasets, dim="time")
 
         return ds_all
 
@@ -145,7 +158,6 @@ def create_gribscan_indecies(
 
     index_collections = {}
 
-    fps_grib = []
     if isinstance(t_analysis, datetime.datetime):
         fps_grib = fn_source_files(t_analysis, **kwargs)
         # create identifier by iso8601 formatting the analysis time
@@ -169,7 +181,7 @@ def create_gribscan_indecies(
             )
             for t_analysis in ts_analysis:
                 identifier = t_analysis.isoformat().replace(":", "").replace("-", "")
-                fps_grib += fn_source_files(t_analysis, **kwargs)
+                fps_grib = fn_source_files(t_analysis, **kwargs)
                 fps_zarr_json = _write_zarr_indexes_for_grib_files(
                     fps_grib,
                     identifier=identifier,

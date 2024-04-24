@@ -15,12 +15,17 @@ dependencies = [
     "zarr>=2.17.2",
     "scipy>=1.13.0",
     "fsspec>=2024.3.1",
-    "dask>=2024.4.2",
+    "dask[diagnostics]>=2024.4.2",
 ]
 requires-python = ">=3.9"
 readme = "README.md"
 license = {text = "MIT"}
 
+[project.optional-dependencies]
+viz = [
+    "matplotlib>=3.8.4",
+    "ipykernel>=6.29.4",
+]
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"

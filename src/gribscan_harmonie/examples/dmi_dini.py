@@ -63,17 +63,17 @@ if __name__ == "__main__":
         fp_grib_indecies_root=fp_grib_indecies_root,
     )
 
-    ds = harmonie_loader(t_analysis=t_analysis, level_type="heightAboveSea")
-    logger.info(ds)
-    logger.debug(ds.u.mean())
+    # ds = harmonie_loader(t_analysis=t_analysis, level_type="heightAboveSea")
+    # logger.info(ds)
+    # logger.debug(ds.u.mean())
 
-    ds = harmonie_loader(
-        t_analysis=t_analysis - datetime.timedelta(hours=3), level_type="heightAboveSea"
-    )
-    logger.info(ds)
-    logger.debug(ds.u.mean())
+    # ds = harmonie_loader(
+    # t_analysis=t_analysis - datetime.timedelta(hours=3), level_type="heightAboveSea"
+    # )
+    # logger.info(ds)
+    # logger.debug(ds.u.mean())
 
-    logger.info(ds)
+    # logger.info(ds)
 
     ds = harmonie_loader(
         t_analysis=slice(t_analysis - datetime.timedelta(hours=3), t_analysis, "PT3H"),
