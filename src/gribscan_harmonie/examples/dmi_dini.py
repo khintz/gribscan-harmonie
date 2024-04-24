@@ -1,7 +1,9 @@
 import datetime
+import tempfile
 from pathlib import Path
 
 import isodate
+from loguru import logger
 
 from ..load import create_loader
 
@@ -52,11 +54,20 @@ if __name__ == "__main__":
     )
     t_analysis = t_analysis - datetime.timedelta(hours=t_analysis.hour % 6)
 
-    harmonie_loader = create_loader(fn_source_files=find_dini_grib_files_collection)
+    tempdir = tempfile.TemporaryDirectory()
+
+    harmonie_loader = create_loader(
+        fn_source_files=find_dini_grib_files_collection,
+        fp_grib_indecies_root=Path(tempdir.name),
+    )
 
     ds = harmonie_loader(t_analysis=t_analysis, level_type="isobaricInhPa")
+
+    logger.info(ds)
 
     ds = harmonie_loader(
         t_analysis=slice(t_analysis, t_analysis + datetime.timedelta(hours=3), "PT1H"),
         level_type="heightAboveGround",
     )
+
+    logger.info(ds)
