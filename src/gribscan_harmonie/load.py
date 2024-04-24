@@ -12,7 +12,7 @@ import xarray as xr
 from loguru import logger
 from tqdm import tqdm
 
-from .utils import normalise_time_argument
+from .utils import normalise_duration, normalise_time_argument
 
 
 def _write_index(fp_grib, fp_grib_indecies_root=None):
@@ -140,6 +140,59 @@ def create_loader(fn_source_files, fp_grib_indecies_root=None, **kwargs):
     return harmonie_loader
 
 
+def _create_gribscan_indecies_for_range_of_analysis_times(
+    fn_source_files,
+    t_analysis,
+    dt_collection_analysis_interval,
+    dt_collection_analysis_timespan,
+    fp_grib_indecies_root,
+    **kwargs,
+):
+    index_collections = {}
+    if t_analysis.step is None:
+        if dt_collection_analysis_interval is not None:
+            logger.warning(
+                f"No step size was provided in `t_analysis` slice object"
+                "Using analysis time-interval provided through "
+                f"{fn_source_files.__name__}.dt_collection_analysis_interval = {dt_collection_analysis_interval}"
+            )
+            dt_analysis_interval = dt_collection_analysis_interval
+        else:
+            raise Exception(
+                "When requesting all forecasts within a range of analysis times (i.e. "
+                "all forecasts with analysis times within that window) you must either provide"
+                f"a step value in the slice, or set {fn_source_files.__name__}.dt_collection_analysis_interval"
+            )
+    else:
+        dt_analysis_interval = t_analysis.step
+
+    if dt_collection_analysis_timespan is None:
+        # each collection of GRIB files comprises one analysis time
+        ts_analysis = pd.date_range(
+            t_analysis.start, t_analysis.stop, freq=dt_analysis_interval
+        )
+        for t_analysis in ts_analysis:
+            identifier = t_analysis.isoformat().replace(":", "").replace("-", "")
+            fps_grib = fn_source_files(t_analysis, **kwargs)
+            fps_zarr_json = _write_zarr_indexes_for_grib_files(
+                fps_grib,
+                identifier=identifier,
+                fp_grib_indecies_root=fp_grib_indecies_root,
+            )
+
+            for level_type, fp_dataset_index in fps_zarr_json.items():
+                if level_type in index_collections:
+                    index_collections[level_type].append(fp_dataset_index)
+                else:
+                    index_collections[level_type] = [fp_dataset_index]
+
+    else:
+        # each colletion of GRIB files comprises more than one analysis time
+        raise NotImplementedError
+
+    return index_collections
+
+
 def create_gribscan_indecies(
     t_analysis: Union[datetime.datetime, slice],
     fn_source_files: callable,
@@ -153,6 +206,19 @@ def create_gribscan_indecies(
     dt_collection_analysis_timespan = getattr(
         fn_source_files, "dt_collection_analysis_timespan"
     )
+
+    if dt_collection_analysis_timespan is not None:
+        dt_collection_analysis_timespan = normalise_duration(
+            dt_collection_analysis_timespan
+        )
+
+    dt_collection_analysis_interval = getattr(
+        fn_source_files, "dt_collection_analysis_interval", None
+    )
+    if dt_collection_analysis_interval is not None:
+        dt_collection_analysis_interval = normalise_duration(
+            dt_collection_analysis_interval
+        )
 
     t_analysis = normalise_time_argument(t_analysis)
 
@@ -171,31 +237,13 @@ def create_gribscan_indecies(
             index_collections[level_type] = [fp_dataset_index]
 
     elif isinstance(t_analysis, slice):
-        assert (
-            t_analysis.step is not None
-        ), "Step must be provided to indicate analysis frequency"
-        if dt_collection_analysis_timespan is None:
-            # each collection of GRIB files comprises one analysis time
-            ts_analysis = pd.date_range(
-                t_analysis.start, t_analysis.stop, freq=t_analysis.step
-            )
-            for t_analysis in ts_analysis:
-                identifier = t_analysis.isoformat().replace(":", "").replace("-", "")
-                fps_grib = fn_source_files(t_analysis, **kwargs)
-                fps_zarr_json = _write_zarr_indexes_for_grib_files(
-                    fps_grib,
-                    identifier=identifier,
-                    fp_grib_indecies_root=fp_grib_indecies_root,
-                )
-
-                for level_type, fp_dataset_index in fps_zarr_json.items():
-                    if level_type in index_collections:
-                        index_collections[level_type].append(fp_dataset_index)
-                    else:
-                        index_collections[level_type] = [fp_dataset_index]
-
-        else:
-            # each colletion of GRIB files comprises more than one analysis time
-            raise NotImplementedError
+        index_collections = _create_gribscan_indecies_for_range_of_analysis_times(
+            fn_source_files=fn_source_files,
+            dt_collection_analysis_timespan=dt_collection_analysis_timespan,
+            fp_grib_indecies_root=fp_grib_indecies_root,
+            t_analysis=t_analysis,
+            dt_collection_analysis_interval=dt_collection_analysis_interval,
+            **kwargs,
+        )
 
     return index_collections

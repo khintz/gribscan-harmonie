@@ -43,6 +43,7 @@ def find_dini_grib_files_collection(
 
 
 find_dini_grib_files_collection.dt_collection_analysis_timespan = None
+find_dini_grib_files_collection.dt_collection_analysis_interval = "PT3H"
 
 
 if __name__ == "__main__":
@@ -76,7 +77,7 @@ if __name__ == "__main__":
     # logger.info(ds)
 
     ds = harmonie_loader(
-        t_analysis=slice(t_analysis - datetime.timedelta(hours=3), t_analysis, "PT3H"),
+        t_analysis=slice(t_analysis - datetime.timedelta(hours=3), t_analysis),
         level_type="heightAboveGround",
     )
 
