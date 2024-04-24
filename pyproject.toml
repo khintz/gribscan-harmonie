@@ -14,6 +14,7 @@ dependencies = [
     "xarray>=2024.3.0",
     "zarr>=2.17.2",
     "scipy>=1.13.0",
+    "fsspec>=2024.3.1",
 ]
 requires-python = ">=3.9"
 readme = "README.md"

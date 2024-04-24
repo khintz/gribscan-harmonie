@@ -1,5 +1,4 @@
 import datetime
-import tempfile
 from pathlib import Path
 
 import isodate
@@ -54,19 +53,30 @@ if __name__ == "__main__":
     )
     t_analysis = t_analysis - datetime.timedelta(hours=t_analysis.hour % 6)
 
-    tempdir = tempfile.TemporaryDirectory()
+    # tempdir = tempfile.TemporaryDirectory()
+    # fp_grib_indecies_root=Path(tempdir.name)
+    fp_grib_indecies_root = Path("/nwp/tmp/grib-indecies/")
+    fp_grib_indecies_root.mkdir(exist_ok=True, parents=True)
 
     harmonie_loader = create_loader(
         fn_source_files=find_dini_grib_files_collection,
-        fp_grib_indecies_root=Path(tempdir.name),
+        fp_grib_indecies_root=fp_grib_indecies_root,
     )
 
-    ds = harmonie_loader(t_analysis=t_analysis, level_type="isobaricInhPa")
+    ds = harmonie_loader(t_analysis=t_analysis, level_type="heightAboveSea")
+    logger.info(ds)
+    logger.debug(ds.u.mean())
+
+    ds = harmonie_loader(
+        t_analysis=t_analysis - datetime.timedelta(hours=3), level_type="heightAboveSea"
+    )
+    logger.info(ds)
+    logger.debug(ds.u.mean())
 
     logger.info(ds)
 
     ds = harmonie_loader(
-        t_analysis=slice(t_analysis, t_analysis + datetime.timedelta(hours=3), "PT1H"),
+        t_analysis=slice(t_analysis - datetime.timedelta(hours=3), t_analysis, "PT3H"),
         level_type="heightAboveGround",
     )
 

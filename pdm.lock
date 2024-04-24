@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:62f2321a0bf1e70f8f77515a469172cb749ac64246d5069d08f8e5661f0cce98"
+content_hash = "sha256:f24ef35e8ebaa61352dcb214ae8a38357b565809d7c6a2b2c70ee0f4513c22c7"
 
 [[package]]
 name = "asciitree"
@@ -204,6 +204,17 @@ summary = "A packages to search for shared libraries on various platforms"
 groups = ["default"]
 files = [
     {file = "findlibs-0.0.5.tar.gz", hash = "sha256:7a801571e999d0ee83f9b92cbb598c21f861ee26ca9dba74cea8958ba4335e7e"},
+]
+
+[[package]]
+name = "fsspec"
+version = "2024.3.1"
+requires_python = ">=3.8"
+summary = "File-system specification"
+groups = ["default"]
+files = [
+    {file = "fsspec-2024.3.1-py3-none-any.whl", hash = "sha256:918d18d41bf73f0e2b261824baeb1b124bcf771767e3a26425cd7dec3332f512"},
+    {file = "fsspec-2024.3.1.tar.gz", hash = "sha256:f39780e282d7d117ffb42bb96992f8a90795e4d0fb0f661a70ca39fe9c43ded9"},
 ]
 
 [[package]]

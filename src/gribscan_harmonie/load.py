@@ -65,14 +65,10 @@ def _write_zarr_indexes_for_grib_files(
 
     # find common path prefix between all fps_grib files
     common_prefix = os.path.commonpath([str(fp) for fp in fps_grib])
-    if fp_grib_indecies_root is not None:
-        common_prefix = str(fp_grib_indecies_root) + common_prefix
-    # produce relative paths for the index files
-    fps_index_relative = [fp.relative_to(common_prefix) for fp in fps_index]
 
     # build a zarr representation of the files into a single index
     refs = gribscan.grib_magic(
-        filenames=fps_index_relative,
+        filenames=fps_index,
         magician=gribscan.magician.HarmonieMagician(),
         global_prefix=str(common_prefix) + "/",
     )
@@ -80,16 +76,20 @@ def _write_zarr_indexes_for_grib_files(
     fps_zarr_json = {}
     for level_type, ref in refs.items():
         fn = f"{level_type}.{identifier}.zarr.json"
-        fp_zarr_json = fps_index[0].parent / fn
-        with open(fp_zarr_json, "w") as f:
-            json.dump(ref, f)
 
-        logger.info(
-            f"Built zarr index for analysis time {identifier} in {fp_zarr_json} for {level_type} level-type"
-        )
+        # TODO: should recreate collection index here if creation of data of
+        # collection index is older than any of the individual index files
+        fp_zarr_json = fps_index[0].parent / fn
+        if not fp_zarr_json.exists():
+            with open(fp_zarr_json, "w") as f:
+                json.dump(ref, f)
+
+            logger.info(
+                f"Built zarr index for analysis time {identifier} in {fp_zarr_json} for {level_type} level-type"
+            )
         fps_zarr_json[level_type] = fp_zarr_json
 
-    return fp_zarr_json
+    return fps_zarr_json
 
 
 def create_loader(fn_source_files, fp_grib_indecies_root=None, **kwargs):
@@ -109,11 +109,20 @@ def create_loader(fn_source_files, fp_grib_indecies_root=None, **kwargs):
                 f"The following level types are available: {', '.join(index_collections.keys())}"
             )
 
-        fp_zarr_json = index_collections[level_type]
+        fps_zarr_json = index_collections[level_type]
 
-        ds = xr.open_zarr(f"reference::{fp_zarr_json}", consolidated=False)
+        datasets = []
 
-        return ds
+        for fp_zarr_json in fps_zarr_json:
+            ds = xr.open_zarr(f"reference::{fp_zarr_json}", consolidated=False)
+            datasets.append(ds)
+
+        if len(datasets) == 1:
+            return datasets[0]
+
+        ds_all = xr.concat(datasets, dim="time")
+
+        return ds_all
 
     return harmonie_loader
 
@@ -146,7 +155,9 @@ def create_gribscan_indecies(
             identifier=identifier,
             fp_grib_indecies_root=fp_grib_indecies_root,
         )
-        index_collections[identifier] = fps_zarr_json
+        for level_type, fp_dataset_index in fps_zarr_json.items():
+            index_collections[level_type] = [fp_dataset_index]
+
     elif isinstance(t_analysis, slice):
         assert (
             t_analysis.step is not None
@@ -157,10 +168,22 @@ def create_gribscan_indecies(
                 t_analysis.start, t_analysis.stop, freq=t_analysis.step
             )
             for t_analysis in ts_analysis:
+                identifier = t_analysis.isoformat().replace(":", "").replace("-", "")
                 fps_grib += fn_source_files(t_analysis, **kwargs)
+                fps_zarr_json = _write_zarr_indexes_for_grib_files(
+                    fps_grib,
+                    identifier=identifier,
+                    fp_grib_indecies_root=fp_grib_indecies_root,
+                )
+
+                for level_type, fp_dataset_index in fps_zarr_json.items():
+                    if level_type in index_collections:
+                        index_collections[level_type].append(fp_dataset_index)
+                    else:
+                        index_collections[level_type] = [fp_dataset_index]
 
         else:
             # each colletion of GRIB files comprises more than one analysis time
-            pass
+            raise NotImplementedError
 
     return index_collections
