@@ -65,6 +65,8 @@ def _write_zarr_indexes_for_grib_files(
 
     # find common path prefix between all fps_grib files
     common_prefix = os.path.commonpath([str(fp) for fp in fps_grib])
+    if fp_grib_indecies_root is not None:
+        common_prefix = str(fp_grib_indecies_root) + common_prefix
     # produce relative paths for the index files
     fps_index_relative = [fp.relative_to(common_prefix) for fp in fps_index]
 
